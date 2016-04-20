@@ -1,0 +1,4 @@
+NuNode->next = oddNode->next;
+nuNode->prev = oddNode;
+oddNode->next->prev = nuNode;
+oddNode->next = nuNode;
