@@ -1,0 +1,9 @@
+void fillAirport(string info, Airport * newAirport)
+{ int tracker = 0;
+  for (int i = 0; i < info.length(); i++)
+  { if(info[i] !=',')
+    newAirport->data[tracker] += info[i];
+    else
+    tracker ++;
+  }
+}
