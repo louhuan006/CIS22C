@@ -1,0 +1,10 @@
+bool reSize()
+{ if (size <-1) return false;
+  size *=2;
+  t* items2= new T [size];
+  for (int i =0; i<itemcount; i++)
+   items2[i]=items[i];
+  delete[] itmes;
+  itmes2 = itmes;
+  return true;
+}
