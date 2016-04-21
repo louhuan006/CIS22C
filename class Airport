@@ -1,0 +1,44 @@
+class Airport {
+private:
+	string AirportCode;
+	double N, W;
+	string CityName;
+	string StateCode;
+
+public:
+	//Default Constructor
+	Airport() {
+		AirportCode = "";
+		StateCode = "";
+		CityName = "";
+		N = 0.0; W = 0.0;
+	}
+	//Parameter Constructor
+	Airport(string Airportz, double Nvalue, double Wvalue, string City, string State) {
+		AirportCode = Airportz;
+		StateCode = State;
+		CityName = City;
+		N = Nvalue; W = Wvalue;
+	}
+	//Copy Constructor
+	Airport(Airport &src) {
+		AirportCode = src.AirportCode;
+		StateCode = src.StateCode;
+		CityName = src.CityName;
+		N = src.N; W = src.W;
+	}
+	//Destructor
+	~Airport() {}
+
+	//Accessors
+	string getAirportCode() { return AirportCode; }
+	string getCityName() { return CityName; }
+	string getStateCode() { return StateCode; }
+	double getPositionN(){ return N; }
+	double getPositionW() { return W; }
+	void setAirportCode(string src) { AirportCode = src; }
+	void setCityName(string src) { CityName = src; }
+	void setStateCode(string src) { StateCode = src; }
+	void setPositionN(double src) { N = src; }
+	void setPositionW(double src) { W = src; }
+};
