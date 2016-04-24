@@ -1,0 +1,203 @@
+template <typename T>
+class DoublyLinkedBag : public BagInterface<T> {
+private:
+	//VARS
+	shared_ptr<Node<T>> head;
+	shared_ptr<Node<T>> tail;
+	int cnt;
+
+public:
+	//CONSTRUCTOR
+	DoublyLinkedBag() {
+		cnt = 0;
+		head = 0;
+			tail = 0;
+	}
+	/*~DoublyLinkedBag() {
+		shared_ptr<Node<T>> ptr(head);
+		shared_ptr<Node<T>> tmp(head);
+		for (int i = 0; i < cnt + 1; i++) {
+			ptr = tmp;
+			tmp = tmp->getNext();
+			ptr->setNext(nullptr);
+			ptr->setLast(nullptr);
+		}
+		ptr.reset();
+		tmp.reset();
+		
+	}*/
+	~DoublyLinkedBag() {
+		clear();
+	}
+	//A func return Current Size
+	int getCurrentSize() const { return cnt;}
+	//A func return if empty
+	bool isEmpty() const { return (cnt == 0); }
+	//Push a item into list
+	bool add(const T& newEntry);
+	//Remove a item from list with a sample
+	bool remove(const T& anEntry);
+	//Traverse
+	bool displayItems();
+	//Search and Return a Index (-1 if not found)
+	int searchForward(const T& sample);
+	int searchBackward(const T& sample);
+	//Entry
+	T getEntry(int index);
+	//Destory the list
+	void clear();
+	//Get the frequecy of the sample item
+	int getFrequencyOf(const T& anEntry) const;
+	//See if linklist contain the sample item
+	bool contains(const T& anEntry) const;
+	//Debugger
+	void debugDisplay();
+};
+
+template <typename T>
+bool DoublyLinkedBag<T>::add(const T& newEntry) {
+	shared_ptr<Node<T>> newNode(new Node<T>(newEntry));
+	if (head == 0)
+	{
+		tail = head=newNode;
+	}
+	else 
+	{
+		tail->setNext(newNode);
+		newNode->setPrev(tail);
+		tail = newNode;
+	}
+	cnt++;
+	return true;
+}
+
+template <typename T>
+bool DoublyLinkedBag<T>::remove(const T& anEntry) {
+	shared_ptr<Node<T>> nodePtr(head);
+	for (int i = 0; i < cnt; i++)
+	{
+		if (nodePtr->getItem() == anEntry)
+		{
+			if (cnt == 1) {
+				head = tail = NULL;
+			}
+			else if (nodePtr == head)
+			{
+				head = head->getNext();
+				head->setPrev(NULL);
+				nodePtr.reset();
+				cnt--;
+			}
+			else if (nodePtr == tail)
+			{
+				tail = tail->getPrev();
+				tail->setNext(NULL);
+				nodePtr.reset();
+				cnt--;
+			}
+			else
+			{
+				nodePtr->getNext()->setPrev(nodePtr->getPrev());
+				nodePtr->getPrev()->setNext(nodePtr->getNext());
+				nodePtr.reset();
+				cnt--;
+			}
+			return true;
+		}
+		nodePtr = nodePtr->getNext();
+	}
+	return false;
+}
+
+template<typename T>
+bool DoublyLinkedBag<T>::displayItems()
+{
+	shared_ptr<Node<T>> theNode(head);
+	cout << "Item List : \n";
+	for (int i = 0; i < cnt; i++)
+	{
+		cout << "Item " << i << " : " << theNode->getItem() << endl;
+		theNode = theNode->getNext();
+	}
+	return (cnt);
+}
+
+template<typename T>
+int DoublyLinkedBag<T>::searchForward(const T & sample)
+{
+	shared_ptr<Node<T>> theNode(head);
+	for (int i = 0; i < cnt; i++)
+	{
+		if (theNode->getItem() == sample)	return i;
+		theNode = theNode->getNext();
+	}
+	return -1;
+}
+
+template<typename T>
+int DoublyLinkedBag<T>::searchBackward(const T & sample)
+{
+	shared_ptr<Node<T>> theNode(tail);
+	for (int i = cnt; i >0; i--)
+	{
+		if (theNode->getItem() == sample)	return i-1;
+		theNode = theNode->getPrev();
+	}
+	return -1;
+}
+
+template<typename T>
+T DoublyLinkedBag<T>::getEntry(int index)
+{
+	shared_ptr<Node<T>> theNode(head);
+	if (index > -1 && index < cnt) {
+		for (int i = 0; i < index; i++)
+		{
+			theNode = theNode->getNext();
+		}
+		return theNode->getItem();
+	}
+	else return T();
+}
+
+template <typename T>
+void DoublyLinkedBag<T>::clear() {
+	shared_ptr<Node<T>> rover = head;
+	while (rover)
+	{
+		T number = rover->getItem();
+		rover = rover->getNext();
+		remove(number);
+	}
+	head = 0;
+}
+
+
+template <typename T>
+int DoublyLinkedBag<T>::getFrequencyOf(const T& anEntry) const {
+	shared_ptr<Node<T>>nodePtr(head);
+	int counter = 0;
+	for (int i = 0; i < cnt; i++) {
+		if (nodePtr->getItem() == anEntry) counter++;
+		nodePtr = nodePtr->getNext();
+	}
+	return counter;
+}
+
+template <typename T>
+bool DoublyLinkedBag<T>::contains(const T& anEntry) const {
+	return (getFrequencyOf(anEntry));
+}
+
+template <typename T>
+void DoublyLinkedBag<T>::debugDisplay() {
+	shared_ptr<Node<T>>nodePtr(head);
+	cout << "=== DEBUGER ===\n";
+	cout << "Count : " << cnt << endl;
+	cout << "Is Empty : " << isEmpty() << endl;
+	for (int i = 0; i < cnt; i++) {
+		cout << i << ". " << nodePtr->getItem() << endl;
+		nodePtr = nodePtr->getNext();
+	}
+	cout << "=== ENDED ===\n";
+}
