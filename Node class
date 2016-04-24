@@ -1,0 +1,25 @@
+template <typename T>
+class Node
+{
+private:
+	T	item; // A data item
+	shared_ptr<Node<T>>prev; // Pointer to last node
+	shared_ptr<Node<T>> next; // Pointer to next node
+
+public:
+	//STURCTORS
+	Node():last(nullptr), next(nullptr){}
+	Node(const T& anItem) {item = anItem;}
+	Node(const T& anItem, shared_ptr<Node<T>> prevPTR, shared_ptr<Node<T>> nextPTR)
+	{ item = anItem; prev = prevPTR; next = nextPTR; }
+	Node(const Node<T> &src) 
+	{ item = src.item; prev = src.prev; next = src.next;}
+	//SETTERS
+	void setItem(const T& anItem) { item = anItem; }
+	void setNext(shared_ptr<Node<T>> PTR) { next = PTR; }
+	void setPrev(shared_ptr<Node<T>> PTR) { prev = PTR; }
+	//GETTERS
+	T getItem() const { return item; }
+	shared_ptr<Node<T>> getNext() const { return next; }
+	shared_ptr<Node<T>> getPrev() const { return prev; }
+}; 
