@@ -1,0 +1,406 @@
+#include <stdexcept>
+#include <string>
+#include <iostream>
+#include <unordered_map>
+#include <fstream>
+
+using namespace std;
+
+static const int DEFAULT_SIZE = 2013;
+
+class NotFoundException : public logic_error
+{
+public:
+	NotFoundException::NotFoundException(const string& message) : logic_error("Not Found Exception: " + message)
+	{
+	}  // end constructor
+}; // end NotFoundException 
+
+template <typename Key, typename Value>
+class Entry
+{
+private:
+	Value item;
+	Key searchKey;
+public:
+	Entry() { }
+	Entry(Value newEntry, Key itemKey) :item(newEntry), searchKey(itemKey) { }
+	Value getItem() const
+	{
+		return item;
+	}
+	Key getKey() const
+	{
+		return searchKey;
+	}
+	void setItem(const Value& newEntry)
+	{
+		item = newEntry;
+	}
+	void setKey(const Key& itemKey)
+	{
+		searchKey = itemKey;
+	}
+	bool operator==(const Entry<Key, Value>& rightHandItem) const
+	{
+		return (searchKey == rightHandItem.getKey());
+	}  // end operator==
+	bool operator>(const Entry<Key, Value>& rightHandItem) const
+	{
+		return (searchKey > rightHandItem.getKey());
+	}
+
+}; // end Entry
+
+template<typename Key, typename Value>
+class HashedEntry : public Entry<Key, Value>
+{
+
+public:
+	HashedEntry()
+	{
+		Entry<Key, Value>();
+	}  // end 
+	HashedEntry(Value newEntry, Key itemKey)
+	{
+		Entry<Key, Value>::setItem(newEntry);
+		Entry<Key, Value>::setKey(itemKey);
+	
+	}  // end 
+	HashedEntry(Value newEntry, Key itemKey, HashedEntry<Key, Value>* nextEntryPtr)
+	{
+		Entry<Key, Value>::setItem(newEntry);
+		Entry<Key, Value>::setKey(itemKey);
+	
+	}  // end 
+
+}; // end HashedEntry
+
+template<typename Key, typename Value>
+class DictionaryInterface
+{
+public:
+	/** Sees whether this dictionary is empty.
+	@return True if the dictionary is empty;
+	otherwise returns false. */
+	virtual bool isEmpty() const = 0;
+
+	/** Gets the number of items in this dictionary.
+	@return The number of items in the dictionary. */
+	virtual int getNumberOfItems() const = 0;
+
+	/** Inserts an item into this dictionary according to the item¡¯s search key.
+	@pre  The search key of the new item differs from all search
+	keys presently in the dictionary.
+	@post  If the insertion is successful, newItem is in its
+	proper position within the dictionary.
+	@param searchKey  The search key associated with the item to be inserted.
+	@param newItem  The item to add to the dictionary.
+	@return  True if item was successfully added, or false if not. */
+	virtual bool add(const Key& searchKey, const Value& newItem) = 0;
+
+	/** Removes an item with the given search key from this dictionary.
+	@post  If the item whose search key equals searchKey existed in the dictionary,
+	the item was removed.
+	@param searchKey  The search key of the item to be removed.
+	@return  True if the item was successfully removed, or false if not. */
+	virtual bool remove(const Key& searchKey) = 0;
+
+	/** Removes all entries from this dictionary. */
+	virtual void clear() = 0;
+
+	/** Retrieves an item with a given search key from a dictionary.
+	@post  If the retrieval is successful, the item is returned.
+	@param searchKey  The search key of the item to be retrieved.
+	@return  The item associated with the search key.
+	@throw  NotFoundException if the item does not exist. */
+	virtual Value getItem(const Key& searchKey) const throw (NotFoundException) = 0;
+
+	/** Sees whether this dictionary contains an item with a given
+	search key.
+	@post  The dictionary is unchanged.
+	@param searchKey  The search key of the item to be retrieved.
+	@return  True if an item with the given search key exists in the dictionary. */
+	virtual bool contains(const Key& searchKey) const = 0;
+
+	/** Traverses this dictionary and calls a given client function once for each item.
+	@post  The given function¡¯s action occurs once for each item in the
+	dictionary and possibly alters the item.
+	@param visit A client function. */
+	virtual void traverse(void visit(Value&)) const = 0;
+}; // end DictionaryInterface
+
+template <typename Key, typename Value>
+class HashedDictionary : public DictionaryInterface<Key, Value>
+{
+private:
+	HashedEntry<Key, Value>** hashTable;  // Array of pointers to entries
+	int itemCount;                               // Count of dictionary entries
+	int hashTableSize;                           // Table size must be prime
+	void destroyDictionary()
+	{
+		for (int i = 0; i < hashTableSize; i++)
+		{
+			// If there are hashed entries at this location,
+			// we need to delete them
+			while (hashTable[i] != nullptr)
+			{
+				HashedEntry<Key, Value>* entryToRemovePtr = hashTable[i];
+				delete entryToRemovePtr;
+				entryToRemovePtr = nullptr; 
+				itemCount--;// For safety
+			}  // end while
+		}  // end for
+		
+	}  // end destroyDictionary
+	int hash(const Key &key) const
+	{
+		int first = key[0];
+		int second = key[1];
+		int third = key[2];
+		int fourth = key[3];
+		int total = first*first + second*second + third + fourth;
+		return (total % hashTableSize);
+	}
+	int getHashIndex(const Key &key, const int &i) const
+	{
+		int newKey = hash(key);
+		int theKey = (newKey + i) % hashTableSize;
+		return theKey;
+	}
+	
+
+	int getNextPrime(int number) const
+	{
+		bool foundPrime = false;
+		if ((number % 2) == 0)
+			number++;
+
+		while (!foundPrime)
+		{
+			if ((number % 5 == 0) || !isPrime(number))
+			{
+				number = number + 2;
+			}
+			else
+				foundPrime = true;
+		}  // end
+
+		return number;
+	}  // end getNextPrime
+	bool isPrime(int number) const
+	{
+		bool isPrimeNumber = true;                 // Assume prime, prove otherwise
+
+		if ((number == 2) || (number == 3))        // Smallest primes
+			isPrimeNumber = true;
+		else
+		{
+			if ((number % 2 == 0) || (number < 2))  // Even number or ineligible
+				isPrimeNumber = false;
+			else
+			{
+				int root = sqrt(number);             // Limit of search
+				int i = 3;
+				do
+				{
+					if (number % i == 0)               // Not prime
+						isPrimeNumber = false;
+					else
+						i = i + 2;
+
+				} while ((isPrimeNumber == true) && (i <= root));
+			}  // end if
+		}  // endif
+
+		return isPrimeNumber;
+	}  // end isPrime
+public:
+	HashedDictionary() : itemCount(0), hashTableSize(DEFAULT_SIZE)
+	{
+		hashTable = new HashedEntry<Key, Value>*[DEFAULT_SIZE];
+		for (int i = 0; i < DEFAULT_SIZE; i++)
+			hashTable[i] = nullptr;
+	}  // end 
+	HashedDictionary(int maxNumberOfEntries) : itemCount(0)
+	{
+		hashTableSize = getNextPrime(maxNumberOfEntries);
+		hashTable = new HashedEntry<Key, Value>*[hashTableSize];
+		for (int i = 0; i < maxNumberOfEntries; i++)
+			hashTable[i] = nullptr;
+	}  // end 
+	HashedDictionary(const HashedDictionary<Key, Value>& dict) : itemCount(dict.itemCount), hashTableSize(dict.hashTableSize)
+	{
+		hashTable = new HashedDictionary<Key, Value>*[dict.maxItems];
+		for (int index = 0; index < dict.itemCount; index++)
+		{
+			hashTable[index] = dict.hashTable[index];
+		}  // end for
+	}  // end 
+	~HashedDictionary()
+	{
+		clear();
+	} // end destructor
+	bool isEmpty() const
+	{
+		return (itemCount == 0);
+	} // end isEmpty
+	int getNumberOfItems() const
+	{
+		return itemCount;
+	} // end getNumberOfItems
+	void clear()
+	{
+		destroyDictionary();
+	} // end clear
+	bool add(const Key& searchKey, const Value& newItem)
+	{
+		
+		int j = HashInsert(searchKey, newItem);
+		if (j > -1)
+		{
+			itemCount++;
+			return true;
+		}
+		else return false;
+	} // end add
+
+int HashInsert(const Key& searchKey, const Value& newItem)
+	{
+		int index = 0;
+		do
+		{
+			int newItemIndex = getHashIndex(searchKey, index);
+			if (hashTable[newItemIndex] == NULL)
+			{
+				HashedEntry<Key, Value>* entryToAddPtr = new HashedEntry<Key, Value>(newItem, searchKey);
+				hashTable[newItemIndex] = entryToAddPtr;
+				return newItemIndex;
+			}
+			else index++;
+		}
+		while (index != hashTableSize);
+		cout << "It is already full." << endl;
+		return -1;
+	
+	}
+
+	bool remove(const Key& searchKey)
+	{
+		
+		int index = 0;
+		int theItemIndex;
+		do
+		{
+			int theItemIndex = getHashIndex(searchKey, index);
+			HashedEntry<Key, Value>* theEntry = hashTable[theItemIndex];
+			if (theEntry == nullptr)
+				return false;
+			if (searchKey == theEntry->getKey())
+			{
+				itemCount--;
+				delete theEntry;
+				theEntry == nullptr;
+				return true;
+			}
+			else index++;
+		} while (index != hashTableSize);
+		return false;
+	} // end remove
+	Value getItem(const Key& searchKey) const throw (NotFoundException)
+	{
+		int index = 0;
+		int theItemIndex;
+		do
+		{
+			int theItemIndex = getHashIndex(searchKey, index);
+			HashedEntry<Key, Value>* theEntry = hashTable[theItemIndex];
+			if (theEntry == nullptr)
+			{
+				return NULL;
+			}
+			if (searchKey == theEntry->getKey())
+				return theEntry->getItem();
+			else index++;
+		} while (index != hashTableSize);
+		return NULL;
+	} // end getItem
+	bool contains(const Key& searchKey) const
+	{
+		int index = 0;
+		int theItemIndex;
+		do
+		{
+			int theItemIndex = getHashIndex(searchKey, index);
+			HashedEntry<Key, Value>* theEntry = hashTable[theItemIndex];
+			if (theEntry == nullptr) return false;
+			if (searchKey == theEntry ->getKey())
+			{
+				return true;
+			}
+			else index++;
+		} while(  index != hashTableSize);
+		return false;
+	} // end contains
+	void traverse(void visit(Value&)) const
+	{
+		// Simple because the array is sorted.
+		for (int index = 0; index<hashTableSize; index++)
+		{
+			// cout<<"\n Index: " << index << "  :"; // for testing
+			HashedEntry<Key, Value>* chainPtr = hashTable[index];
+			while (chainPtr != nullptr)
+			{
+				Value currentItem = chainPtr->getItem();
+				visit(currentItem);
+			} // end while 
+		}  // end for 
+	}  //end traverse
+	Value operator[](Key key)
+	{
+		return getItem(key);
+	}
+}; // end HashedDictionary
+
+
+void enableDebug(bool bvalue)
+{
+	if (!bvalue) return;
+
+	int tmpFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
+
+	// Turn on leak-checking bit.
+	tmpFlag |= _CRTDBG_LEAK_CHECK_DF;
+
+	// Turn off CRT block checking bit.
+	tmpFlag &= ~_CRTDBG_CHECK_CRT_DF;
+
+	// Set flag to the new value.
+	_CrtSetDbgFlag(tmpFlag);
+}
+
+
+void main()
+{
+	enableDebug(true);
+	DictionaryInterface<string, double>* Table = new HashedDictionary<string, double>();
+	ifstream inFile;
+	inFile.open("UProducts.csv");
+
+	if (inFile.is_open())
+	{
+		while (inFile.peek() != EOF)
+		{
+			string product;
+			string price;
+			getline(inFile, product, ',');
+			getline(inFile, price);
+			Table->add(product, stod(price));
+		}
+		
+	}
+	else
+		cout << "File did not open." << endl;
+
+	delete Table;
+}  // end main
